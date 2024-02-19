@@ -5,7 +5,6 @@ const {open} = require('sqlite')
 const sqlite3 = require('sqlite3')
 const bcrypt = require('bcrypt')
 const jwt = require('jsonwebtoken')
-var format = require('date-fns/format')
 app.use(express.json())
 
 let db
@@ -119,7 +118,7 @@ app.get('/reply/', async (request, response) => {
 
 app.get('/likes/', async (request, response) => {
   try {
-    const likesQuery = `SELECT * FROM user`
+    const likesQuery = `SELECT * FROM like`
     const likes = await db.all(likesQuery)
     response.send(likes)
   } catch (e) {
@@ -161,7 +160,7 @@ const authenticationToken = (request, response, next) => {
   }
   if (jwtToken === undefined) {
     response.status(401)
-    response.send('invalid JWT Token')
+    response.send('Invalid JWT Token')
   } else {
     jwt.verify(jwtToken, 'KEY', async (error, payload) => {
       if (error) {
@@ -242,14 +241,16 @@ app.get('/tweets/:tweetId/', authenticationToken, async (request, response) => {
     const {tweetId} = request.params
     const tweetUserIdQuery = `SELECT user_id FROM tweet WHERE tweet_id = ${tweetId}`
     const tweetUserId = await db.get(tweetUserIdQuery)
-    console.log(tweetUserId)
-    console.log(followingUserIdArr)
+    // console.log(tweetUserId)
+    // console.log(followingUserIdArr)
     if (!followingUserIdArr.includes(tweetUserId.user_id)) {
       response.status(401)
       response.send('Invalid Request')
     } else {
-      const tweetStatsQuery = `SELECT tweet.tweet as tweet, COUNT(like.like_id) as likes, COUNT(reply.reply_id) as replies, tweet.date_time as dateTime FROM tweet INNER JOIN like ON tweet.tweet_id = like.tweet_id INNER JOIN reply ON tweet.tweet_id = reply.tweet_id WHERE tweet.tweet_id = ${tweetId}`
+      const tweetStatsQuery = `SELECT tweet.tweet as tweet, COUNT(DISTINCT like.like_id) as likes, COUNT(DISTINCT reply.reply_id) as replies, tweet.date_time as dateTime FROM tweet INNER JOIN like ON tweet.tweet_id = like.tweet_id INNER JOIN reply ON tweet.tweet_id = reply.tweet_id WHERE tweet.tweet_id = ${tweetId}`
       const tweetStats = await db.get(tweetStatsQuery)
+      // const tweetStatsQuery1 = `SELECT * FROM tweet INNER JOIN like ON tweet.tweet_id = like.tweet_id INNER JOIN reply ON tweet.tweet_id = reply.tweet_id WHERE tweet.tweet_id = ${tweetId}`
+      // const tweetStats1 = await db.all(tweetStatsQuery1)
       response.send(tweetStats)
     }
   } catch (e) {
@@ -323,7 +324,7 @@ app.get('/user/tweets/', authenticationToken, async (request, response) => {
   try {
     const getUserIdQuery = `SELECT user_id FROM user WHERE username = '${request.username}'`
     const {user_id} = await db.get(getUserIdQuery)
-    const tweetStatsQuery = `SELECT tweet.tweet as tweet, COUNT(like.like_id) as likes, COUNT(reply.reply_id) as replies, tweet.date_time as dateTime FROM tweet INNER JOIN like ON tweet.tweet_id = like.tweet_id INNER JOIN reply ON tweet.tweet_id = reply.tweet_id WHERE tweet.user_id = ${user_id} GROUP BY tweet.tweet_id`
+    const tweetStatsQuery = `SELECT tweet.tweet as tweet, COUNT(DISTINCT like.like_id) as likes, COUNT(DISTINCT reply.reply_id) as replies, tweet.date_time as dateTime FROM tweet INNER JOIN like ON tweet.tweet_id = like.tweet_id INNER JOIN reply ON tweet.tweet_id = reply.tweet_id WHERE tweet.user_id = ${user_id} GROUP BY tweet.tweet_id`
     const tweetStats = await db.all(tweetStatsQuery)
     response.send(tweetStats)
   } catch (e) {
